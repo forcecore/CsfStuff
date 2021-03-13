@@ -25,6 +25,8 @@ Usage: ./csf2str INPUT.csf OUTPUT.str
 
 ```
 Usage: ./str2csf INPUT.str OUTPUT.csf \[meta.json\] \[extra_data.json\]
+
+BE SURE TO USE UTF-8 ENCODING FOR STR FILES
 ```
 
 Converts input STR file into output CSF file.

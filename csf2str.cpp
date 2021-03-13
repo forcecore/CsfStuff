@@ -19,37 +19,6 @@
 using namespace std;
 using json = nlohmann::json;
 
-struct CSFHeader
-{
-    char magic[4];
-    uint32_t csf_format;
-    uint32_t num_labels;
-    uint32_t num_strings;
-    uint32_t unused;
-    uint32_t lang_code;
-};
-
-struct LabelHeader
-{
-    char magic[4];
-    uint32_t num_string_pairs;;
-    uint32_t length;
-};
-
-struct StrHeader
-{
-    char magic[4];
-    uint32_t length;
-};
-
-class Entry
-{
-public:
-    string label;
-    string str;
-    string extra_data;
-};
-
 void show_usage()
 {
     cout << "Usage: csf2str [input.csf] [output.str]" << endl;
@@ -196,6 +165,7 @@ void decode_and_write_files
     CSFHeader header;
     fread(&header, sizeof(CSFHeader), 1, csff);
     ASSERT(strncmp(header.magic, " FSC", 4) == 0, "Given input file does not begin with \" FSC\"!"); // reverse of CSF
+    ASSERT(header.csf_format == 3, "CSF format 3 is not supported. (RA2 through RA3 should work though)");
     save_metadata(metafname, header);
 
     json extra_data;

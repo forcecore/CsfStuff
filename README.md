@@ -1,6 +1,6 @@
 # CsfStuff
 
-CSF &lt;-> STR converter and merger util for two STR files. This should work for all games from RA2 all the way to RA3.
+CSF &lt;-> STR converter + Merger util for multiple STR files. These tools should work for all games from RA2 all the way to RA3.
 
 ## csf2str
 

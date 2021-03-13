@@ -3,6 +3,7 @@ build
 # csf <-> str files
 *.json
 *.str
+*.pyc
 
 # Prerequisites
 *.d

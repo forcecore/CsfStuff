@@ -4,8 +4,14 @@ After building the project, you can run python nosetests.
 Just install nosetests then run nosetest command to run the tests.
 """
 
-import os
 import json
+import os
+import tempfile
+from pathlib import Path
+
+ORIGINAL_CWD = Path(os.getcwd())
+CSF2STR = Path("build/csf2str").absolute()
+assert CSF2STR.exists(), "csf2str is not compiled."
 
 
 def check_str(fname):
@@ -25,29 +31,50 @@ def check_str(fname):
             else:
                 assert line == ""
     print(f'{fname} check complete')
- 
+
 
 def test_str_generation():
     """
-    Check if str file is correctly created.
+    STR file generation check, without extra_data
     """
-    os.system("build/csf2str samples/gamestrings.csf xxx.str")
+    input_csf = (ORIGINAL_CWD / "samples/gamestrings.csf").absolute()  # has no extra data
+    assert input_csf.exists(), "csf2str is not compiled."
 
-    check_str('xxx.str')
-   
-    with open('meta.json') as f:
-        _x = json.load(f)
-    print('meta.json created')
+    with tempfile.TemporaryDirectory() as tmpd:
+        os.chdir(tmpd)
+        os.system(f'"{CSF2STR}" "{input_csf}" xxx.str')
+
+        check_str('xxx.str')
+
+        with open('meta.json') as f:
+            _x = json.load(f)
+        print('meta.json created')
+
+        os.chdir(ORIGINAL_CWD)
 
 
 def test_extra_data_generation():
-    os.system("build/csf2str samples/ra2md.csf xxx.str")
+    """
+    STR file generation check, with extra_data
+    """
+    input_csf = (ORIGINAL_CWD / "samples/ra2md.csf").absolute()  # has extra data
+    assert input_csf.exists(), "csf2str is not compiled."
 
-    check_str('xxx.str')
+    with tempfile.TemporaryDirectory() as tmpd:
+        os.chdir(tmpd)
+        os.system(f'"{CSF2STR}" "{input_csf}" xxx.str')
 
-    with open('extra_data.json') as f:
-        _x = json.load(f)
-    print('extra_data.json created')
+        check_str('xxx.str')
+
+        with open('meta.json') as f:
+            _x = json.load(f)
+        print('meta.json created')
+
+        with open('extra_data.json') as f:
+            _x = json.load(f)
+        print('extra_data.json created')
+
+        os.chdir(ORIGINAL_CWD)
 
 
 if __name__ == "__main__":

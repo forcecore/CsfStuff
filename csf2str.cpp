@@ -115,9 +115,9 @@ string escape_characters(const string &s)
 {
     string result = "\"";
 
-    for (int i = 0 ; i < s.length() ; ++i)
+    for (char ch: s)
     {
-        switch (s[i])
+        switch (ch)
         {
             case '\n':
                 result += "\\n";
@@ -129,7 +129,7 @@ string escape_characters(const string &s)
                 result += "\\\"";
                 break;
             default:
-                result += s[i];
+                result += ch;
         }
     }
 

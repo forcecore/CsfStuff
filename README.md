@@ -43,3 +43,17 @@ For modders and translators, merge_str will merge multiple STR files into one.
 Note that order matters!
 Later str files will overwrite on top of previous str files.
 The final command line argument is considers as the output file name.
+
+## Build instructions for developers
+
+* On Linux, just type make.
+* Makefile will run cmake for you.
+* Or if you want to use cmake directly,
+```
+mkdir build
+cd build
+cmake ..
+make
+```
+* On Windows, open this project folder with Visual Studio (Tested with VS2019).
+* Visual Studio will detect CMakeLists.txt and will compile stuff for you.

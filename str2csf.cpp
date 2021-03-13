@@ -7,6 +7,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <vector>
 
 // UTF-16 stuff
 // Let's use C++11, although C++17 deprecates this.
@@ -23,174 +24,211 @@ void show_usage()
 {
     cout << "Usage: str2csf input.str output.csf [meta.json] [extra_data.json]" << endl;
     cout << endl;
-    cout << "    optional arguments:";
+    cout << "    optional arguments:" << endl;
     cout << "        meta.json: meta data from the CSF file. The file must exist!" << endl;
     cout << "        extra_data.json: extra data attached to each label, if any." << endl;
 }
 
-void check_fnames(const string &ifname, const string &ofname, const string &extrafname, const string &metafname)
+json read_json_file(const string &fname)
 {
-    ASSERT(ifname != ofname, "Input and output file names must have different file names");
-    ASSERT(ifname != extrafname, "Input file must not be named " + extrafname);
-    ASSERT(ifname != metafname, "Input file must not be named " + metafname);
-
-    ASSERT(ofname != extrafname, "Output file must not be named " + extrafname);
-    ASSERT(ofname != metafname, "Output file must not be named " + metafname);
-
-    assert(extrafname != metafname); // Wrong programming haha
-}
-
-void save_json(const string &ofname, const json &j)
-{
-    ofstream f;
-    f.open(ofname);
-    f << j.dump(2);
-    f.close();
-}
-
-void save_metadata(const string &ofname, const CSFHeader &header)
-{
+    std::ifstream i(fname);
     json j;
-    j["lang_code"] = header.lang_code;
-    j["unused"] = header.unused;
-    save_json(ofname, j);
-    cout << "Wrote metadata to " << ofname << endl;
+    i >> j;
+    return j;
 }
 
-string read_ascii(FILE *f, int n)
+void write_ascii(FILE *fp, const string &s)
 {
-    string result(n, '\0');
-    fread(&result[0], sizeof(char), n, f);
-    return result;
+    uint32_t len = s.length();
+    fwrite(&len, sizeof(uint32_t), 1, fp); // write length
+    fwrite(s.c_str(), sizeof(char), len, fp); // write string
 }
 
-string read_flipped_utf16(FILE *f, int n)
+void write_flipped_utf16(FILE *fp, const string &s)
 {
-    string buffer(2 * n + 2, '\0');
-    fread(&buffer[0], sizeof(uint16_t), n, f);
+    wstring_convert<codecvt_utf8_utf16<char16_t>, char16_t> cv;
+    u16string tmp = cv.from_bytes(s);
+    uint32_t len = tmp.length();
 
     // Flip bits
-    u16string tmp(n, '\0');
-    uint16_t *cur = (uint16_t *) &buffer[0];
-    for (size_t i = 0 ; i < n ; i++, cur++)
-        tmp[i] = ~(*cur);
-    // cout << n << " " << tmp.length() << endl; // == n + 1, for the null termination.
+    for (size_t i = 0 ; i < len ; i++)
+        tmp[i] = ~(tmp[i]);
 
-    wstring_convert<codecvt_utf8_utf16<char16_t>, char16_t> cv;
-    string result = cv.to_bytes(tmp);
-    // cout << n << " " << result.length() << endl; // result length is unpredictable!
-    return result;
+    fwrite(&len, sizeof(uint32_t), 1, fp); // write length
+    fwrite(&tmp[0], sizeof(char16_t), len, fp); // write string
 }
 
-Entry parse_entry(FILE *f, json *extra_data)
+string unescape_characters(const string &s)
 {
-    Entry result;
+    ASSERT(s[0] == '"', "STR must start with '\"'.");
+    ASSERT(s[s.length() - 1] == '"', "STR must end with '\"'.");
 
-    // Read the label header
-    LabelHeader label_header;
-    fread(&label_header, sizeof(LabelHeader), 1, f);
-    ASSERT(label_header.num_string_pairs == 1, "labels with more than 1 string pairs is not supported! (and should not appear in any of the C&C games...)");
-    ASSERT(strncmp(label_header.magic, " LBL", 4) == 0, "Label header does not begin with \" LBL\"!");
+    enum mode_t { NORMAL, ESCAPED };
 
-    // Read the label
-    result.label = read_ascii(f, label_header.length);
+    mode_t mode = NORMAL;
+    string result;
 
-    // Read the string part
-    StrHeader str_header;
-    fread(&str_header, sizeof(StrHeader), 1, f);
-    bool has_extra_data = false;
-    if (strncmp(str_header.magic, "WRTS", 4) == 0) // reverse of STRW
-        has_extra_data = true;
-    else
-        ASSERT(strncmp(str_header.magic, " RTS", 4) == 0, "Invalid string header, expecting WRTS or RTS"); // reverse of STR
-    result.str = read_flipped_utf16(f, str_header.length);
-
-    if (has_extra_data)
+    for (size_t i = 1 ; i < s.length() - 1 ; ++i) // loop, excluding quotes.
     {
-        uint32_t length;
-        fread(&length, sizeof(uint32_t), 1, f);
-        result.extra_data = read_ascii(f, length);
-    }
-
-    return result;
-}
-
-string escape_characters(const string &s)
-{
-    string result = "\"";
-
-    for (int i = 0 ; i < s.length() ; ++i)
-    {
-        switch (s[i])
+        char ch = s[i];
+        if (mode == NORMAL)
         {
-            case '\n':
-                result += "\\n";
-                break;
-            case '\\':
-                result += "\\\\";
-                break;
-            case '"':
-                result += "\\\"";
-                break;
-            default:
-                result += s[i];
+            if (ch == '\\')
+                mode = ESCAPED;
+            else
+                result += ch;
+        }
+        else
+        {
+            switch (ch)
+            {
+                case 'n':
+                    result += '\n';
+                    break;
+                case '\\':
+                    result += '\\';
+                    break;
+                case '"':
+                    result += '"';
+                    break;
+                default:
+                    ASSERT(0, "Invalid character! Got '" << ch << "': " << s);
+                    break;
+            }
+            mode = NORMAL;
         }
     }
 
-    result += "\"";
     return result;
 }
 
-void write_entry_to_str(FILE *of, const Entry &entry)
-{
-    static bool is_first = true;
-
-    if (!is_first)
-    {
-        fprintf(of, "\n");
-    }
-    is_first = false;
-
-    fprintf(of, "%s\n", entry.label.c_str());
-    fprintf(of, "%s\n", escape_characters(entry.str).c_str());
-    fprintf(of, "END\n");
-}
-
-void decode_and_write_files
+void parse_args
 (
-    FILE *csff,
-    const string &ifname,
-    const string &ofname,
-    const string &extrafname,
-    const string &metafname
+    int argc, const char *argv[],
+    string *ifname, string *ofname,
+    string *metafname, string *extrafname
 )
 {
-    // Read the header
+    *ifname = argv[1];
+    *ofname = argv[2];
+
+    if (argc >= 4)
+        *metafname = argv[3];
+
+    if (argc >= 5)
+        *extrafname = argv[4];
+
+    ASSERT(*ifname != *ofname, "Input and output file names must have different file names");
+    ASSERT(*ifname != "", "Input file name must be given!");
+    ASSERT(*ofname != "", "Output file name must be given!");
+    ASSERT(*metafname != "", "Meta file name must be empty!");
+}
+
+/**
+ * Read entries from str files.
+ * STR files look like this:
+ *
+ * TXT_POWER_DRAIN
+ * "Power = %d \n Drain = %d"
+ * END
+ *
+ * TXT_STAND_BY
+ * "Please Stand By..."
+ * END
+ */
+vector<Entry> read_entries(const string &fname)
+{
+    vector<Entry> result;
+    Entry entry;
+
+    ifstream fs(fname);
+    string line;
+
+    enum state_t { SEEK_AND_READ_LABEL, READ_STR, READ_END };
+    state_t state = SEEK_AND_READ_LABEL;
+    while (getline(fs, line))
+    {
+        switch (state)
+        {
+            case SEEK_AND_READ_LABEL:
+                if (line == "")
+                    continue;
+                entry.label = line;
+                state = READ_STR;
+                break;
+            case READ_STR:
+                entry.str = line;
+                state = READ_END;
+                break;
+            case READ_END:
+                ASSERT(line == "END", "END expected, got \"" + line + "\", invalid input!");
+                state = SEEK_AND_READ_LABEL;
+                // cout << entry.label << " " << entry.str << endl;
+                result.push_back(entry);
+                break;
+            default:
+                ASSERT(0, "Can't reach here");
+                break;
+        }
+    }
+
+    fs.close();
+    return result;
+}
+
+void write_csf_header(FILE *fp, size_t num_labels, const json &metadata)
+{
     CSFHeader header;
-    fread(&header, sizeof(CSFHeader), 1, csff);
-    ASSERT(strncmp(header.magic, " FSC", 4) == 0, "Given input file does not begin with \" FSC\"!"); // reverse of CSF
-    save_metadata(metafname, header);
+    header.num_labels = num_labels;
+    header.num_strings = num_labels;
+    header.unused = metadata["unused"];
+    header.lang_code = metadata["lang_code"];
+    fwrite(&header, sizeof(CSFHeader), 1, fp);
+}
 
-    json extra_data;
-    FILE *of = fopen(ofname.c_str(), "w");
+void write_entry(FILE *fp, const Entry &e, const json &extra_data)
+{
+    static const char *STR = " RTS";
+    static const char *STRW = "WRTS";
 
-    for (size_t i = 0 ; i < header.num_labels ; i++)
+    LabelHeader lh;
+    lh.length = e.label.length();
+    fwrite(&lh, sizeof(LabelHeader), 1, fp);
+    for (char ch: e.label)
+        fputc(ch, fp);
+
+    // Check if there's extra data.
+    auto ed = extra_data.find(e.label);
+
+    // Now, let's write content.
+    const char *str_magic = (ed == extra_data.end()) ? STR : STRW;
+    fwrite(str_magic, sizeof(char), 4, fp);
+    string str = unescape_characters(e.str);
+    write_flipped_utf16(fp, str);
+
+    // Write extra data, if there is.
+    if (ed != extra_data.end())
+        write_ascii(fp, *ed);
+}
+
+void write_csf
+(
+    const string &ofname,
+    const vector<Entry> &entries,
+    const json &metadata,
+    const json &extra_data
+)
+{
+    FILE *fp = fopen(ofname.c_str(), "wb");
+
+    write_csf_header(fp, entries.size(), metadata);
+    for(const Entry e: entries)
     {
-        Entry entry = parse_entry(csff, &extra_data);
-        write_entry_to_str(of, entry);
-        if (entry.extra_data != "")
-            extra_data[entry.label] = entry.extra_data;
+        write_entry(fp, e, extra_data);
     }
 
-    fclose(of);
-    cout << "Wrote " << ofname << endl;
-
-    // Save extra data too, if any.
-    if (extra_data.size() > 0)
-    {
-        save_json(extrafname, extra_data);
-        cout << "Wrote extra_data to " << extrafname << endl;
-    }
+    fclose(fp);
+    return;
 }
 
 int main(int argc, const char *argv[])
@@ -200,17 +238,18 @@ int main(int argc, const char *argv[])
         show_usage();
         return 0;
     }
-
-    // Get program arguments
-    string ifname = argv[1];
-    string ofname = argv[2];
-    string extrafname = "extra_data.json"; // Extra data can't be converted as str. We create extra file to preserve it.
+    string ifname;
+    string ofname;
     string metafname = "meta.json";
-    check_fnames(ifname, ofname, extrafname, metafname);
+    string extrafname = ""; // Extra data can't be converted as str. We create extra file to preserve it.
+    parse_args(argc, argv, &ifname, &ofname, &metafname, &extrafname);
 
-    FILE *f = fopen(ifname.c_str(), "rb");
-    ASSERT(f != NULL, "Failed to open file " + ifname);
-    decode_and_write_files(f, ifname, ofname, extrafname, metafname);
-    fclose(f);
+    vector<Entry> entries = read_entries(ifname);
+    json metadata = read_json_file(metafname);
+    json extra_data;
+    if (extrafname != "")
+        extra_data = read_json_file(extrafname);
+
+    write_csf(ofname, entries, metadata, extra_data);
     return 0;
 }

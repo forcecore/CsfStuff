@@ -18,7 +18,7 @@
 struct CSFHeader
 {
     char magic[4] = {' ', 'F', 'S', 'C'}; // CSF in reverse
-    uint32_t csf_format;
+    uint32_t csf_format = 3;
     uint32_t num_labels;
     uint32_t num_strings;
     uint32_t unused;
@@ -28,7 +28,7 @@ struct CSFHeader
 struct LabelHeader
 {
     char magic[4] = {' ', 'L', 'B', 'L'};
-    uint32_t num_string_pairs;
+    uint32_t num_string_pairs = 1;
     uint32_t length;
 };
 

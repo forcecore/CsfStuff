@@ -4,6 +4,12 @@
 
 using namespace std;
 
+bool file_exists(const string &fname)
+{
+    std::ifstream infile(fname);
+    return infile.good();
+}
+
 /**
  * Read entries from str files.
  * STR files look like this:
@@ -21,6 +27,7 @@ std::vector<Entry> read_entries(const std::string &fname)
     vector<Entry> result;
     Entry entry;
 
+    ASSERT(file_exists(fname), fname << " does not exists!");
     ifstream fs(fname);
     string line;
 

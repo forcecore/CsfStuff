@@ -3,3 +3,10 @@ all: build
 
 build:
 	mkdir build
+
+test:
+	nosetests
+
+clean:
+	rm -rf build
+	rm -f *.str *.json

@@ -8,10 +8,10 @@ CSF &lt;-> STR converter + Merger util for multiple STR files. These tools shoul
 Usage: ./csf2str INPUT.csf OUTPUT.str
 ```
 
-* This will read INPUT.csf and convert it as OUTPUT.str.
-* However, the STR file is not enough to fully reconstruct the CSF file. To prevent the information loss, csf2str will create two extra files.
-  * meta.json contains string table's language information.
-  * extra_data.json contains extra data tag attached to label entries in the string table. In case you are wondering what extra data is, those from ra2md.csf looks like the following:
+* This will read INPUT.csf and convert it to OUTPUT.str.
+* However, the STR file is not enough to fully reconstruct the CSF file. To prevent information loss, csf2str will create two extra files.
+  * meta.json contains the string table's language information.
+  * extra_data.json contains extra data tags attached to label entries in the string table. In case you are wondering what extra data is, those from ra2md.csf look like the following:
 
 ```
   "VOX:aprotr1": "aprotr1e",
@@ -24,7 +24,7 @@ Usage: ./csf2str INPUT.csf OUTPUT.str
 ## str2csf
 
 ```
-Usage: ./str2csf INPUT.str OUTPUT.csf \[meta.json\] \[extra_data.json\]
+Usage: ./str2csf INPUT.str OUTPUT.csf [meta.json] [extra_data.json]
 
 BE SURE TO USE UTF-8 ENCODING FOR STR FILES
 ```
@@ -42,7 +42,7 @@ Usage ./merge_str str1 str2 ... strN output.str
 For modders and translators, merge_str will merge multiple STR files into one.
 Note that order matters!
 Later str files will overwrite on top of previous str files.
-The final command line argument is considers as the output file name.
+The final command line argument is considered as the output file name.
 
 ## Build instructions for developers
 

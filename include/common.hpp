@@ -1,6 +1,9 @@
 #pragma once
 
+#include <cassert>
+#include <iostream>
 #include <string>
+#include <vector>
 
 #ifndef NDEBUG
 #   define ASSERT(condition, message) \
@@ -45,3 +48,5 @@ public:
     std::string str;
     std::string extra_data;
 };
+
+std::vector<Entry> read_entries(const std::string &fname);

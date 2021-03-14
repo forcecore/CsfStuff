@@ -192,7 +192,7 @@ int main(int argc, const char *argv[])
     string extrafname = ""; // Extra data can't be converted as str. We create extra file to preserve it.
     parse_args(argc, argv, &ifname, &ofname, &metafname, &extrafname);
 
-    vector<Entry> entries = read_entries(ifname);
+    vector<Entry> entries = read_entries(ifname, true);
     json metadata = read_json_file(metafname);
     json extra_data;
     if (extrafname != "")

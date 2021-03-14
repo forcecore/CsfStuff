@@ -29,7 +29,12 @@ map<string, int> make_lookup_table(const vector<Entry> &entries)
 {
     map<string, int> result;
     for (size_t i = 0 ; i < entries.size() ; i++)
-        result[ entries[i].label ] = i;
+    {
+        const string &label = entries[i].label;
+        auto it = result.find(label);
+        ASSERT(it == result.end(), "\nDuplicate entry found, label is " << label);
+        result[label] = i;
+    }
     return result;
 }
 
@@ -96,14 +101,15 @@ int main(int argc, const char *argv[])
 
     const char *ofname = argv[argc - 1];
     cout << "Primary file is " << argv[1] << endl;
-    vector<Entry> main_entries = read_entries(argv[1]);
+    vector<Entry> main_entries = read_entries(argv[1], true);
 
     // to merge the STR entries while preserving order of entry appearance, we need to create a lookup table
     map<string, int> lut = make_lookup_table(main_entries);
 
     for (size_t i = 2 ; i < argc - 1 ; i++)
     {
-        vector<Entry> more_entries = read_entries(argv[i]);
+        vector<Entry> more_entries = read_entries(argv[i], true);
+        map<string, int> _lut = make_lookup_table(more_entries); // Just to check for duplicate entries in more_entries
         cout << "Merging " << argv[i] << endl;
         merge_entries(&main_entries, more_entries, &lut);
     }

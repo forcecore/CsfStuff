@@ -23,6 +23,26 @@
                 }
             ],
             "preLaunchTask": "build_all"
+        },
+        {
+            "name": "(gdb) merge_str",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/merge_str",
+            "args": ["samples/a.str", "samples/b.str", "xxx.str"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "build_all"
         }
     ]
 }

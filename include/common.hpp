@@ -49,4 +49,4 @@ public:
     std::string extra_data;
 };
 
-std::vector<Entry> read_entries(const std::string &fname);
+std::vector<Entry> read_entries(const std::string &fname, bool do_strip);

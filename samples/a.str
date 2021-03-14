@@ -10,6 +10,26 @@ TYPE:JAPANCOMMANDHQ
 "TARGET STRUCTURE"
 END
 
+// hmm
+// Some comments   
+ // IN between 
+
+	
+	// Tab here
+
 TYPE:JAPANCOMMANDOTECH1
 "Psychic Commando"
 END
+
+// Trailing space label
+ TYPE:JAPANCOMMANDOTECH2    
+"Psychic Commando"
+END
+
+// indented content
+TYPE:JAPANCOMMANDOTECH3
+    "Psychic Commando"  
+  END    
+
+
+  // lots of trailing crap

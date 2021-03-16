@@ -41,7 +41,7 @@ bool is_END(const string &line)
 string strip_str(const int lineno, const string &line)
 {
     // Matches quoted block, which may or may not be surrounded by white spaces.
-    const static regex expr("\\s*(\".+\")\\s*");
+    const static regex expr("\\s*(\".*\")\\s*");
     smatch match;
     bool is_match = regex_match(line, match, expr);
     ASSERT(is_match, "\nline " << lineno << ": \"" << line << "\" is not a proper in-game string. It must not be commented and properly quoted at the start and at the end.");
@@ -52,10 +52,10 @@ string strip_str(const int lineno, const string &line)
 
 string strip_label(const int lineno, const string &line)
 {
-    const static regex expr("\\s*(\\S+)\\s*");
+    const static regex expr("\\s*(.+)\\s*");
     smatch match;
     bool is_match = regex_match(line, match, expr);
-    ASSERT(is_match, "\nline " << lineno << ": \"" << line << "\" is not a proper label, label must not have a blank space in between and must not have comment part.");
+    ASSERT(is_match, "\nline " << lineno << ": \"" << line << "\" label must not have comment part.");
     //for (unsigned i=0; i<match.size(); ++i)
     //    std::cout << "match #" << i << ": " << match[i] << std::endl;
     return match[1].str();

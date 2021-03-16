@@ -34,7 +34,7 @@ def test_2merge_ab():
 
         assert lines[1].rstrip() != '"This will be overwritten"'
         assert lines[5].rstrip() == '"This will stay as is."'
-        assert lines[17].rstrip() == '"Cyborg Ninja Pirate Mecha Death Tanya, this is a new entry created by the merge"'
+        assert lines[25].rstrip() == '"Cyborg Ninja Pirate Mecha Death Tanya, this is a new entry created by the merge"'
         os.chdir(ORIGINAL_CWD)
 
     print("Passed a <- b merge")
@@ -74,7 +74,9 @@ def test_3merge():
     input_a = (ORIGINAL_CWD / "samples/a.str").absolute()
     input_b = (ORIGINAL_CWD / "samples/b.str").absolute()
     input_c = (ORIGINAL_CWD / "samples/c.str").absolute()
-    outf = "xxx.str"
+    xxxf = "xxx.str"
+    yyyf = "yyy.str"
+    immf = "imm.str"  # immediate file
     assert input_a.exists()
     assert input_b.exists()
     assert input_c.exists()
@@ -82,19 +84,27 @@ def test_3merge():
     with tempfile.TemporaryDirectory() as tmpd:
         os.chdir(tmpd)
 
-        ret = os.system(f'"{MERGE_STR}" "{input_a}" "{input_b}" "{input_c}" {outf}')
+        ret = os.system(f'"{MERGE_STR}" "{input_a}" "{input_b}" "{input_c}" {xxxf}')
+        assert ret == 0
+        ret = os.system(f'"{MERGE_STR}" "{input_a}" "{input_b}" {immf}')
+        assert ret == 0
+        ret = os.system(f'"{MERGE_STR}" "{immf}" "{input_c}" {yyyf}')
         assert ret == 0
 
-        with open(outf) as f:
+        # Equality check
+        ret = os.system(f'diff {xxxf} {yyyf}')
+        assert ret == 0
+
+        with open(xxxf) as f:
             lines = f.readlines()
 
         assert lines[1].rstrip() != '"This will be overwritten"'
         assert lines[5].rstrip() == '"This will stay as is."'
-        assert lines[17].rstrip() == '"Cyborg Ninja Pirate Mecha Death Tanya, this is a new entry created by the merge"'
-        assert lines[21].rstrip() == '"Nod Cyborg Commando, newly created by another merge"'
+        assert lines[25].rstrip() == '"Cyborg Ninja Pirate Mecha Death Tanya, this is a new entry created by the merge"'
+        assert lines[29].rstrip() == '"Nod Cyborg Commando, newly created by another merge"'
         os.chdir(ORIGINAL_CWD)
 
-    print("Passed a <- b merge")
+    print("Passed a b c -> x merge")
 
 
 if __name__ == "__main__":

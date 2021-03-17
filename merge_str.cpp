@@ -63,26 +63,11 @@ void merge_entries(vector<Entry> *main_entries, const vector<Entry> &new_entries
     }
 }
 
-void write_entry_to_str_as_is(FILE *of, const Entry &entry)
-{
-    static bool is_first = true;
-
-    if (!is_first)
-    {
-        fprintf(of, "\n");
-    }
-    is_first = false;
-
-    fprintf(of, "%s\n", entry.label.c_str());
-    fprintf(of, "%s\n", entry.str.c_str()); // no escape of back slashes.
-    fprintf(of, "END\n");
-}
-
 void write_entries_to_str(const string &ofname, const vector<Entry> &entries)
 {
     FILE *fp = fopen(ofname.c_str(), "w");
     for (const Entry &e: entries)
-        write_entry_to_str_as_is(fp, e);
+        write_entry_to_str(fp, e);
     fclose(fp);
 }
 
@@ -101,15 +86,17 @@ int main(int argc, const char *argv[])
 
     const char *ofname = argv[argc - 1];
     cout << "Primary file is " << argv[1] << endl;
-    vector<Entry> main_entries = read_entries(argv[1], true);
+    vector<Entry> main_entries = read_entries(argv[1]);
 
     // to merge the STR entries while preserving order of entry appearance, we need to create a lookup table
     map<string, int> lut = make_lookup_table(main_entries);
 
     for (size_t i = 2 ; i < argc - 1 ; i++)
     {
-        vector<Entry> more_entries = read_entries(argv[i], true);
+        cout << "On file \"" << argv[i] << "\"" << endl;
+        vector<Entry> more_entries = read_entries(argv[i]);
         map<string, int> _lut = make_lookup_table(more_entries); // Just to check for duplicate entries in more_entries
+
         cout << "Merging " << argv[i] << endl;
         merge_entries(&main_entries, more_entries, &lut);
     }

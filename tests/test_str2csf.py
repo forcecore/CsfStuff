@@ -56,7 +56,9 @@ def test_with_extra_data():
         ret = os.system(f'"{CSF2STR}" "{input_csf}" {strf}')  # meta.json gets created
         assert ret == 0
 
-        os.system(f'"{STR2CSF}" "{strf}" {ocsvf} meta.json extra_data.json')  # from str file and meta.json, recreate the CSF file.
+        assert os.path.exists("extra_data.json")
+
+        os.system(f'"{STR2CSF}" "{strf}" {ocsvf} extra_data.json')  # from str file and meta.json, recreate the CSF file.
         assert ret == 0
 
         ret = os.system(f'diff "{input_csf}" {ocsvf}')  # check if reconstructed CSF == input CSF.

@@ -33,6 +33,12 @@ def check_str(fname):
     print(f'{fname} check complete')
 
 
+def check_metadata(fname):
+    with open('xxx.str') as f:
+        lines = f.readlines()
+    return json.loads(lines[1])
+
+
 def test_str_generation():
     """
     STR file generation check, without extra_data
@@ -45,10 +51,8 @@ def test_str_generation():
         os.system(f'"{CSF2STR}" "{input_csf}" xxx.str')
 
         check_str('xxx.str')
-
-        with open('meta.json') as f:
-            _x = json.load(f)
-        print('meta.json created')
+        check_metadata('xxx.str')
+        print('meta data is OK')
 
         os.chdir(ORIGINAL_CWD)
 
@@ -66,9 +70,8 @@ def test_extra_data_generation():
 
         check_str('xxx.str')
 
-        with open('meta.json') as f:
-            _x = json.load(f)
-        print('meta.json created')
+        check_metadata('xxx.str')
+        print('meta data is OK')
 
         with open('extra_data.json') as f:
             _x = json.load(f)

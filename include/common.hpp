@@ -49,4 +49,5 @@ public:
     std::string extra_data;
 };
 
-std::vector<Entry> read_entries(const std::string &fname, bool do_strip);
+void write_entry_to_str(FILE *fp, const Entry &entry);
+std::vector<Entry> read_entries(const std::string &fname);

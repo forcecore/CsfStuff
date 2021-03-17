@@ -24,16 +24,11 @@ void show_usage()
     cout << "Usage: csf2str [input.csf] [output.str]" << endl;
 }
 
-void check_fnames(const string &ifname, const string &ofname, const string &extrafname, const string &metafname)
+void check_fnames(const string &ifname, const string &ofname, const string &extrafname)
 {
     ASSERT(ifname != ofname, "Input and output file names must have different file names");
     ASSERT(ifname != extrafname, "Input file must not be named " + extrafname);
-    ASSERT(ifname != metafname, "Input file must not be named " + metafname);
-
     ASSERT(ofname != extrafname, "Output file must not be named " + extrafname);
-    ASSERT(ofname != metafname, "Output file must not be named " + metafname);
-
-    assert(extrafname != metafname); // Wrong programming haha
 }
 
 void save_json(const string &ofname, const json &j)
@@ -44,13 +39,20 @@ void save_json(const string &ofname, const json &j)
     f.close();
 }
 
-void save_metadata(const string &ofname, const CSFHeader &header)
+/**
+ * Let's embed metadata into the STR file rather than having a separate meta.json.
+ * In csf2str and str2csf, we assume CSFSTUFF:META appears as the first entry!
+ */
+void save_metadata(FILE *fp, const CSFHeader &header)
 {
     json j;
     j["lang_code"] = header.lang_code;
     j["unused"] = header.unused;
-    save_json(ofname, j);
-    cout << "Wrote metadata to " << ofname << endl;
+
+    Entry e;
+    e.label = "CSFSTUFF:META";
+    e.str = j.dump();
+    write_entry_to_str(fp, e);
 }
 
 string read_ascii(FILE *f, int n)
@@ -111,54 +113,12 @@ Entry parse_entry(FILE *f, json *extra_data)
     return result;
 }
 
-string escape_characters(const string &s)
-{
-    string result = "\"";
-
-    for (char ch: s)
-    {
-        switch (ch)
-        {
-            case '\n':
-                result += "\\n";
-                break;
-            case '\\':
-                result += "\\\\";
-                break;
-            case '"':
-                result += "\\\"";
-                break;
-            default:
-                result += ch;
-        }
-    }
-
-    result += "\"";
-    return result;
-}
-
-void write_entry_to_str(FILE *of, const Entry &entry)
-{
-    static bool is_first = true;
-
-    if (!is_first)
-    {
-        fprintf(of, "\n");
-    }
-    is_first = false;
-
-    fprintf(of, "%s\n", entry.label.c_str());
-    fprintf(of, "%s\n", escape_characters(entry.str).c_str());
-    fprintf(of, "END\n");
-}
-
 void decode_and_write_files
 (
     FILE *csff,
     const string &ifname,
     const string &ofname,
-    const string &extrafname,
-    const string &metafname
+    const string &extrafname
 )
 {
     // Read the header
@@ -166,10 +126,11 @@ void decode_and_write_files
     fread(&header, sizeof(CSFHeader), 1, csff);
     ASSERT(strncmp(header.magic, " FSC", 4) == 0, "Given input file does not begin with \" FSC\"!"); // reverse of CSF
     ASSERT(header.csf_format == 3, "CSF format 3 is not supported. (RA2 through RA3 should work though)");
-    save_metadata(metafname, header);
 
     json extra_data;
     FILE *of = fopen(ofname.c_str(), "w");
+
+    save_metadata(of, header);
 
     for (size_t i = 0 ; i < header.num_labels ; i++)
     {
@@ -202,12 +163,11 @@ int main(int argc, const char *argv[])
     string ifname = argv[1];
     string ofname = argv[2];
     string extrafname = "extra_data.json"; // Extra data can't be converted as str. We create extra file to preserve it.
-    string metafname = "meta.json";
-    check_fnames(ifname, ofname, extrafname, metafname);
+    check_fnames(ifname, ofname, extrafname);
 
     FILE *f = fopen(ifname.c_str(), "rb");
     ASSERT(f != NULL, "Failed to open file " + ifname);
-    decode_and_write_files(f, ifname, ofname, extrafname, metafname);
+    decode_and_write_files(f, ifname, ofname, extrafname);
     fclose(f);
     return 0;
 }

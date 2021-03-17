@@ -22,11 +22,10 @@ using json = nlohmann::json;
 
 void show_usage()
 {
-    cout << "Usage: str2csf input.str output.csf [meta.json] [extra_data.json]" << endl;
+    cout << "Usage: str2csf input.str output.csf [extra_data.json]" << endl;
     cout << endl;
     cout << "    optional arguments:" << endl;
-    cout << "        meta.json: meta data from the CSF file. The file must exist!" << endl;
-    cout << "        extra_data.json: extra data attached to each label, if any." << endl;
+    cout << "        extra_data.json: provide extra data attached to labels, if any." << endl;
 }
 
 json read_json_file(const string &fname)
@@ -35,6 +34,31 @@ json read_json_file(const string &fname)
     json j;
     i >> j;
     return j;
+}
+
+json read_metadata(vector<Entry> *entries)
+{
+    const Entry &e = entries->at(0);
+    if (e.label == "CSFSTUFF:META")
+    {
+        json j;
+        try
+        {
+            j = json::parse(e.str);
+        }
+        catch(const std::exception& ex)
+        {
+            std::cerr << ex.what() << '\n';
+            std::cerr << "Error parsing CSF metadata in CSFSTUFF:META: got \'" << e.str << "\'" << endl;
+            throw ex;
+        }
+        entries->erase(entries->begin()); // Delete the entry so that we get perfect reconstruction.
+        return j;
+    }
+
+    // By default, lang_code == 0 (en_US), unused == 0.
+    cerr << "Warning: CSFSTUFF:META must exist and appear as the first item. Falling back to default CSF metadata of language_code=0 and unused=0" << endl;
+    return json::parse("{\"lang_code\":0,\"unused\":0}");
 }
 
 void write_ascii(FILE *fp, const string &s)
@@ -58,70 +82,22 @@ void write_flipped_utf16(FILE *fp, const string &s)
     fwrite(&tmp[0], sizeof(char16_t), len, fp); // write string
 }
 
-string unescape_characters(const string &s)
-{
-    ASSERT(s[0] == '"', "STR must start with '\"'.");
-    ASSERT(s[s.length() - 1] == '"', "STR must end with '\"'.");
-
-    enum mode_t { NORMAL, ESCAPED };
-
-    mode_t mode = NORMAL;
-    string result;
-
-    for (size_t i = 1 ; i < s.length() - 1 ; ++i) // loop, excluding quotes.
-    {
-        char ch = s[i];
-        if (mode == NORMAL)
-        {
-            if (ch == '\\')
-                mode = ESCAPED;
-            else
-                result += ch;
-        }
-        else
-        {
-            switch (ch)
-            {
-                case 'n':
-                    result += '\n';
-                    break;
-                case '\\':
-                    result += '\\';
-                    break;
-                case '"':
-                    result += '"';
-                    break;
-                default:
-                    ASSERT(0, "Invalid character! Got '" << ch << "': " << s);
-                    break;
-            }
-            mode = NORMAL;
-        }
-    }
-
-    return result;
-}
-
 void parse_args
 (
     int argc, const char *argv[],
     string *ifname, string *ofname,
-    string *metafname, string *extrafname
+    string *extrafname
 )
 {
     *ifname = argv[1];
     *ofname = argv[2];
 
     if (argc >= 4)
-        *metafname = argv[3];
-
-    if (argc >= 5)
-        *extrafname = argv[4];
+        *extrafname = argv[3];
 
     ASSERT(*ifname != *ofname, "Input and output file names must have different file names");
     ASSERT(*ifname != "", "Input file name must be given!");
     ASSERT(*ofname != "", "Output file name must be given!");
-    ASSERT(*metafname != "", "Meta file name must be empty!");
 }
 
 void write_csf_header(FILE *fp, size_t num_labels, const json &metadata)
@@ -151,8 +127,7 @@ void write_entry(FILE *fp, const Entry &e, const json &extra_data)
     // Now, let's write content.
     const char *str_magic = (ed == extra_data.end()) ? STR : STRW;
     fwrite(str_magic, sizeof(char), 4, fp);
-    string str = unescape_characters(e.str);
-    write_flipped_utf16(fp, str);
+    write_flipped_utf16(fp, e.str);
 
     // Write extra data, if there is.
     if (ed != extra_data.end())
@@ -188,12 +163,11 @@ int main(int argc, const char *argv[])
     }
     string ifname;
     string ofname;
-    string metafname = "meta.json";
     string extrafname = ""; // Extra data can't be converted as str. We create extra file to preserve it.
-    parse_args(argc, argv, &ifname, &ofname, &metafname, &extrafname);
+    parse_args(argc, argv, &ifname, &ofname, &extrafname);
 
-    vector<Entry> entries = read_entries(ifname, true);
-    json metadata = read_json_file(metafname);
+    vector<Entry> entries = read_entries(ifname);
+    json metadata = read_metadata(&entries);
     json extra_data;
     if (extrafname != "")
         extra_data = read_json_file(extrafname);

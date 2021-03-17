@@ -12,6 +12,87 @@ bool file_exists(const string &fname)
     return infile.good();
 }
 
+string escape_characters(const string &s)
+{
+    string result = "\"";
+
+    for (char ch: s)
+    {
+        switch (ch)
+        {
+            case '\n':
+                result += "\\n";
+                break;
+            case '\\':
+                result += "\\\\";
+                break;
+            case '"':
+                result += "\\\"";
+                break;
+            default:
+                result += ch;
+        }
+    }
+
+    result += "\"";
+    return result;
+}
+
+string unescape_characters(const string &s)
+{
+    enum mode_t { NORMAL, ESCAPED };
+
+    mode_t mode = NORMAL;
+    string result;
+
+    for (char ch: s)
+    {
+        if (mode == NORMAL)
+        {
+            if (ch == '\\')
+                mode = ESCAPED;
+            else
+                result += ch;
+        }
+        else
+        {
+            switch (ch)
+            {
+                case 'n':
+                    result += '\n';
+                    break;
+                case '\\':
+                    result += '\\';
+                    break;
+                case '"':
+                    result += '"';
+                    break;
+                default:
+                    ASSERT(0, "Invalid character! Got '" << ch << "': " << s);
+                    break;
+            }
+            mode = NORMAL;
+        }
+    }
+
+    return result;
+}
+
+void write_entry_to_str(FILE *fp, const Entry &entry)
+{
+    static bool is_first = true;
+
+    if (!is_first)
+    {
+        fprintf(fp, "\n");
+    }
+    is_first = false;
+
+    fprintf(fp, "%s\n", entry.label.c_str());
+    fprintf(fp, "%s\n", escape_characters(entry.str).c_str());
+    fprintf(fp, "END\n");
+}
+
 /**
  * Match whitespace and/or comment.
  * "" returns true.
@@ -41,7 +122,7 @@ bool is_END(const string &line)
 string strip_str(const int lineno, const string &line)
 {
     // Matches quoted block, which may or may not be surrounded by white spaces.
-    const static regex expr("\\s*(\".*\")\\s*");
+    const static regex expr("\\s*\"(.*)\"\\s*");
     smatch match;
     bool is_match = regex_match(line, match, expr);
     ASSERT(is_match, "\nline " << lineno << ": \"" << line << "\" is not a proper in-game string. It must not be commented and properly quoted at the start and at the end.");
@@ -72,11 +153,8 @@ string strip_label(const int lineno, const string &line)
  * TXT_STAND_BY
  * "Please Stand By..."
  * END
- *
- * If do_strip_str is true, the string content will be stripped of comments and bad syntax will be checked.
- * Otherwise str will be kept as is. (Used for STR merging.)
  */
-std::vector<Entry> read_entries(const std::string &fname, bool do_strip)
+std::vector<Entry> read_entries(const std::string &fname)
 {
     vector<Entry> result;
     Entry entry;
@@ -95,11 +173,11 @@ std::vector<Entry> read_entries(const std::string &fname, bool do_strip)
             case SEEK_AND_READ_LABEL:
                 if (is_whitespace_or_comment(line))
                     continue;
-                entry.label = (do_strip) ? strip_label(lineno, line) : line;
+                entry.label = strip_label(lineno, line);
                 state = READ_STR;
                 break;
             case READ_STR:
-                entry.str = (do_strip) ? strip_str(lineno, line) : line;
+                entry.str = unescape_characters( strip_str(lineno, line) );
                 state = READ_END;
                 break;
             case READ_END:

@@ -9,8 +9,7 @@ Usage: ./csf2str INPUT.csf OUTPUT.str
 ```
 
 * This will read INPUT.csf and convert it to OUTPUT.str.
-* However, the STR file is not enough to fully reconstruct the CSF file. To prevent information loss, csf2str will create two extra files.
-  * meta.json contains the string table's language information.
+* However, the STR file is not enough to fully reconstruct the CSF file. To prevent information loss, csf2str will create one extra file.
   * extra_data.json contains extra data tags attached to label entries in the string table. In case you are wondering what extra data is, those from ra2md.csf look like the following:
 
 ```
@@ -18,20 +17,30 @@ Usage: ./csf2str INPUT.csf OUTPUT.str
   "VOX:aprotr2": "aprotr2e",
   "VOX:aprotr3": "aprotr3e",
 ```
-
-* These extra files will be used by str2csf to reconstruct the CSF file back intact.
+* The emitted STR file will contain an extra entry that looks like the following:
+```
+CSFSTUFF:META
+"{\"lang_code\":0,\"unused\":0}"
+END
+```
+* This extra entry will be read by str2csf but will not appear in the final CSF file.
+* With extra entry and extra_data.json combined, CSF file can be reconstructed with zero loss of information.
 
 ## str2csf
 
 ```
-Usage: ./str2csf INPUT.str OUTPUT.csf [meta.json] [extra_data.json]
+Usage: ./str2csf INPUT.str OUTPUT.csf [extra_data.json]
 
 BE SURE TO USE UTF-8 ENCODING FOR STR FILES
 ```
 
 Converts input STR file into output CSF file.
 To create the CSF file without any loss of information,
-this program will use meta.json and optional extra_data.json if provided.
+this program will use optional extra_data.json if provided.
+CSFSTUFF:META will be read, if exists.
+If not, the CSF file will get lang_code=0, unused=0 by default.
+CSFSTUFF:META will be only used by str2csf and will not appear in your final CSF file,
+hence don't name your unit as CSFSTUFF:META   :)
 
 ## merge_str
 
